@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import Categories from "@/components/Categories";
 import NewsCard from "@/components/NewsCard";
@@ -17,42 +17,28 @@ type Article = {
 
 export default function Home() {
   const [articles, setArticles] = useState<Article[]>([]);
-  const [index, setIndex] = useState(0);
   const [page, setPage] = useState(1);
   const [category, setCategory] = useState("general");
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [saved, setSaved] = useState<string[]>([]);
 
-  const touchStartY = useRef<number | null>(null);
-  const lastSwipeTime = useRef(0);
-
   useEffect(() => {
-    const cached = localStorage.getItem("breviax_articles");
-    if (cached) setArticles(JSON.parse(cached));
-
-    const savedItems = localStorage.getItem("breviax_saved");
-    if (savedItems) setSaved(JSON.parse(savedItems));
-
-    const savedCategory = localStorage.getItem("breviax_category");
-    if (savedCategory) setCategory(savedCategory);
-  }, []);
+    loadMore(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category]);
 
   async function loadMore(reset = false) {
     if (loading || (!hasMore && !reset)) return;
-
     setLoading(true);
+
     const res = await fetch(
       `/api/news?page=${reset ? 1 : page}&category=${category}`
     );
     const data = await res.json();
 
     if (Array.isArray(data) && data.length > 0) {
-      setArticles((prev) => {
-        const updated = reset ? data : [...prev, ...data];
-        localStorage.setItem("breviax_articles", JSON.stringify(updated));
-        return updated;
-      });
+      setArticles((prev) => (reset ? data : [...prev, ...data]));
       setPage(reset ? 2 : page + 1);
       setHasMore(true);
     } else {
@@ -62,50 +48,12 @@ export default function Home() {
     setLoading(false);
   }
 
-  useEffect(() => {
-    setArticles([]);
-    setIndex(0);
-    setPage(1);
-    setHasMore(true);
-    loadMore(true);
-    localStorage.setItem("breviax_category", category);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category]);
-
-  useEffect(() => {
-    if (index >= articles.length - 2) loadMore();
-  }, [index, articles.length]);
-
   function toggleSave(title: string) {
-    setSaved((prev) => {
-      const updated = prev.includes(title)
+    setSaved((prev) =>
+      prev.includes(title)
         ? prev.filter((t) => t !== title)
-        : [...prev, title];
-      localStorage.setItem("breviax_saved", JSON.stringify(updated));
-      return updated;
-    });
-  }
-
-  function onTouchStart(e: React.TouchEvent) {
-    touchStartY.current = e.touches[0].clientY;
-  }
-
-  function onTouchEnd(e: React.TouchEvent) {
-    if (touchStartY.current === null) return;
-
-    const diff = touchStartY.current - e.changedTouches[0].clientY;
-    const now = Date.now();
-
-    if (now - lastSwipeTime.current < 250) return;
-
-    if (diff > 70 && index < articles.length - 1) {
-      setIndex((i) => i + 1);
-    } else if (diff < -70 && index > 0) {
-      setIndex((i) => i - 1);
-    }
-
-    lastSwipeTime.current = now;
-    touchStartY.current = null;
+        : [...prev, title]
+    );
   }
 
   return (
@@ -113,35 +61,38 @@ export default function Home() {
       <Header />
       <Categories active={category} onChange={setCategory} />
 
-      <main
-        className="h-screen bg-gray-100 dark:bg-black flex items-center justify-center px-4"
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-      >
-        {/* ✅ WIDTH CONTROLLER */}
-        <div className="w-full max-w-2xl">
-          {articles[index] ? (
-            <NewsCard
-              category={articles[index].source?.name || "News"}
-              title={articles[index].title}
-              summary={articles[index].description}
-              source={articles[index].source?.name || "Unknown"}
-              time={new Date(
-                articles[index].publishedAt
-              ).toLocaleTimeString()}
-              image={articles[index].image}
-              url={articles[index].url}
-              saved={saved.includes(articles[index].title)}
-              onSave={() => toggleSave(articles[index].title)}
-            />
-          ) : loading ? (
+      {/* ONE CARD PER SCREEN */}
+      <main className="h-[100vh] overflow-y-scroll snap-y snap-mandatory bg-black">
+        {articles.map((a, i) => (
+          <section
+            key={`${a.title}-${i}`}
+            className="h-[100vh] snap-start flex justify-center px-4"
+            onScrollCapture={() => {
+              if (i >= articles.length - 2) loadMore();
+            }}
+          >
+            {/* ⬆️ PULL CARD CLOSE TO CATEGORIES */}
+            <div className="w-full max-w-2xl -mt-6">
+              <NewsCard
+                category={a.source?.name || "News"}
+                title={a.title}
+                summary={a.description}
+                source={a.source?.name || "Unknown"}
+                time={new Date(a.publishedAt).toLocaleTimeString()}
+                image={a.image}
+                url={a.url}
+                saved={saved.includes(a.title)}
+                onSave={() => toggleSave(a.title)}
+              />
+            </div>
+          </section>
+        ))}
+
+        {loading && (
+          <section className="h-[100vh] snap-start flex items-center justify-center">
             <NewsCardSkeleton />
-          ) : (
-            <p className="text-gray-500 text-sm text-center">
-              No news available
-            </p>
-          )}
-        </div>
+          </section>
+        )}
       </main>
     </>
   );
