@@ -76,9 +76,9 @@ export default function NewsCard({
   return (
     <>
       {/* CARD */}
-      <article className="bg-zinc-900 rounded-2xl px-1 pt-18 pb-3 shadow-md border border-zinc-800 w-full">
+      <article className="bg-zinc-900 rounded-2xl px-1 pt-8 pb- shadow-md border border-zinc-800 w-full">
         {image && (
-          <div className="w-full h-57 overflow-hidden rounded-xl mb-1">
+          <div className="w-full h-59 overflow-hidden rounded-xl mb-1">
             <img
               src={image}
               alt={title}
@@ -96,7 +96,7 @@ export default function NewsCard({
           {title}
         </h2>
 
-        <p className="text-sm text-gray-300 mb-4">
+        <p className="text-sm text-gray-300 mb-20">
           {summary}
         </p>
 
