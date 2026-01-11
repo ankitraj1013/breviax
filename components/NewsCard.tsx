@@ -76,9 +76,9 @@ export default function NewsCard({
   return (
     <>
       {/* CARD */}
-      <article className="bg-zinc-900 rounded-2xl px-5 pt-7 pb-5 shadow-md border border-zinc-800 w-full">
+      <article className="bg-zinc-900 rounded-2xl px-1 pt-18 pb-3 shadow-md border border-zinc-800 w-full">
         {image && (
-          <div className="w-full h-56 overflow-hidden rounded-xl mb-3">
+          <div className="w-full h-57 overflow-hidden rounded-xl mb-1">
             <img
               src={image}
               alt={title}
@@ -162,7 +162,7 @@ export default function NewsCard({
             onClick={() => setShowShare(false)}
           />
 
-          <div className="fixed bottom-0 left-0 right-0 bg-zinc-900 rounded-t-2xl p-5 z-50 animate-slide-up">
+          <div className="fixed bottom-0 left-0 right-0 bg-zinc-900 rounded-t-2xl p- z-50 animate-slide-up">
             <div className="w-12 h-1 bg-gray-600 rounded-full mx-auto mb-4" />
 
             <div className="flex justify-around text-center">
