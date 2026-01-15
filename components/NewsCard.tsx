@@ -2,8 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-
-/* -------------------- TYPES -------------------- */
+import { track } from "@/lib/analytics";
 
 type AiSummary = {
   bullets: string[];
@@ -22,8 +21,6 @@ type NewsCardProps = {
   onSave: () => void;
 };
 
-/* -------------------- COMPONENT -------------------- */
-
 export default function NewsCard({
   category,
   title,
@@ -38,7 +35,13 @@ export default function NewsCard({
   const [ai, setAi] = useState<AiSummary | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
 
-  /* -------- Fetch AI summary (safe, non-blocking) -------- */
+  // Track view (once per card render)
+  useEffect(() => {
+    track({ type: "view", title });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch AI summary
   useEffect(() => {
     let cancelled = false;
 
@@ -59,7 +62,7 @@ export default function NewsCard({
         const data = await res.json();
         if (!cancelled) setAi(data);
       } catch {
-        // fail silently – never break the feed
+        // fail silently
       } finally {
         if (!cancelled) setLoadingAi(false);
       }
@@ -71,20 +74,18 @@ export default function NewsCard({
     };
   }, [title, summary]);
 
-  /* -------------------- RENDER -------------------- */
-
   return (
     <article className="bg-neutral-950 text-white rounded-2xl overflow-hidden shadow-lg transition-transform duration-150 active:scale-[0.98]">
       {/* IMAGE */}
       {image && (
         <div className="relative h-56 w-full">
           <Image
-  src={image}
-  alt={title}
-  fill
-  unoptimized
-  className="object-cover"
-/>
+            src={image}
+            alt={title}
+            fill
+            unoptimized
+            className="object-cover"
+          />
         </div>
       )}
 
@@ -106,7 +107,6 @@ export default function NewsCard({
           {summary}
         </p>
 
-        {/* DIVIDER */}
         <div className="h-px bg-neutral-800 my-2" />
 
         {/* AI LOADING */}
@@ -136,7 +136,10 @@ export default function NewsCard({
         {/* ACTIONS */}
         <div className="mt-4 flex items-center justify-between">
           <button
-            onClick={onSave}
+            onClick={() => {
+              onSave();
+              track({ type: "save", title });
+            }}
             className="text-sm text-blue-400 hover:text-blue-300"
           >
             {saved ? "★ Saved" : "☆ Save"}
@@ -147,6 +150,7 @@ export default function NewsCard({
               href={url}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => track({ type: "open", title })}
               className="text-sm text-gray-400 hover:text-white"
             >
               Read full →
