@@ -14,14 +14,16 @@ type Article = {
   source?: { name?: string };
 };
 
-const ITEM_HEIGHT = 800;
+const ITEM_HEIGHT = 800; // one screen height
 
 export default function Feed({
   category,
   interests,
+  premium,
 }: {
   category: string;
   interests: string[];
+  premium: boolean;
 }) {
   const [articles, setArticles] = useState<Article[]>([]);
   const [page, setPage] = useState(1);
@@ -32,7 +34,7 @@ export default function Feed({
   const listRef = useRef<List>(null);
   const observerRef = useRef<HTMLDivElement | null>(null);
 
-  // Reset feed on category / interest change
+  /* -------------------- RESET ON FILTER CHANGE -------------------- */
   useEffect(() => {
     setArticles([]);
     setPage(1);
@@ -41,6 +43,7 @@ export default function Feed({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category, interests.join(",")]);
 
+  /* -------------------- INFINITE LOAD -------------------- */
   useEffect(() => {
     if (!observerRef.current) return;
 
@@ -58,6 +61,7 @@ export default function Feed({
     if (loading || (!hasMore && !reset)) return;
 
     setLoading(true);
+
     const res = await fetch(
       `/api/news?page=${reset ? 1 : page}&category=${category}&interests=${interests.join(",")}`
     );
@@ -75,7 +79,13 @@ export default function Feed({
     setLoading(false);
   }
 
+  /* -------------------- SAVE (PREMIUM GATING) -------------------- */
   function toggleSave(title: string) {
+    if (!premium && saved.length >= 10 && !saved.includes(title)) {
+      alert("Upgrade to Premium for unlimited saves");
+      return;
+    }
+
     setSaved((prev) =>
       prev.includes(title)
         ? prev.filter((t) => t !== title)
@@ -83,6 +93,7 @@ export default function Feed({
     );
   }
 
+  /* -------------------- ROW RENDER -------------------- */
   const Row = ({
     index,
     style,
@@ -112,6 +123,7 @@ export default function Feed({
     );
   };
 
+  /* -------------------- RENDER -------------------- */
   return (
     <main className="h-[100vh] bg-black overflow-hidden">
       <List
