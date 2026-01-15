@@ -16,19 +16,30 @@ type Article = {
 
 const ITEM_HEIGHT = 800;
 
-export default function Feed({ category }: { category: string }) {
+export default function Feed({
+  category,
+  interests,
+}: {
+  category: string;
+  interests: string[];
+}) {
   const [articles, setArticles] = useState<Article[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [saved, setSaved] = useState<string[]>([]);
 
+  const listRef = useRef<List>(null);
   const observerRef = useRef<HTMLDivElement | null>(null);
 
+  // Reset feed on category / interest change
   useEffect(() => {
+    setArticles([]);
+    setPage(1);
+    setHasMore(true);
     loadMore(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category]);
+  }, [category, interests.join(",")]);
 
   useEffect(() => {
     if (!observerRef.current) return;
@@ -48,8 +59,9 @@ export default function Feed({ category }: { category: string }) {
 
     setLoading(true);
     const res = await fetch(
-      `/api/news?page=${reset ? 1 : page}&category=${category}`
+      `/api/news?page=${reset ? 1 : page}&category=${category}&interests=${interests.join(",")}`
     );
+
     const data = await res.json();
 
     if (Array.isArray(data) && data.length > 0) {
@@ -82,7 +94,7 @@ export default function Feed({ category }: { category: string }) {
     if (!article) return null;
 
     return (
-      <section style={style} className="snap-start flex justify-center px-4">
+      <section style={style} className="flex justify-center px-4">
         <div className="w-full max-w-2xl -mt-6">
           <NewsCard
             category={article.source?.name || "News"}
@@ -101,8 +113,9 @@ export default function Feed({ category }: { category: string }) {
   };
 
   return (
-    <main className="h-[100vh] bg-black snap-y snap-mandatory">
+    <main className="h-[100vh] bg-black overflow-hidden">
       <List
+        ref={listRef}
         height={ITEM_HEIGHT}
         itemCount={articles.length}
         itemSize={ITEM_HEIGHT}
