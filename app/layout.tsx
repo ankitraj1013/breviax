@@ -1,37 +1,32 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-<head>
-  <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#000000" />
-</head>
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import Script from "next/script";
 
 export const metadata = {
-  title: "BreviaX",
-  description: "News that Matters"
+  title: "BreviaX – Smart News That Matters",
+  description:
+    "BreviaX delivers short, AI-powered news summaries personalized to your interests.",
 };
+
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#000000" />
+      </head>
+
+      <body>{children}</body>
+
+      {/* Service Worker registration */}
+      <Script
+        src="/sw-register.js"
+        strategy="afterInteractive"
+      />
     </html>
   );
 }
