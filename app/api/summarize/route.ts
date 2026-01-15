@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
 
-/* -------------------- SIMPLE IN-MEMORY CACHE -------------------- */
-const cache = new Map<
-  string,
-  { data: any; expires: number }
->();
-
+/* -------------------- IN-MEMORY CACHE -------------------- */
+const cache = new Map<string, { data: any; expires: number }>();
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
-/* -------------------- OPENAI CALL -------------------- */
+/* -------------------- OPENAI HELPER -------------------- */
 async function generateSummary(title: string, description: string) {
   const apiKey = process.env.OPENAI_API_KEY;
 
@@ -37,7 +33,7 @@ Return STRICT JSON in this exact format:
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -58,29 +54,32 @@ Return STRICT JSON in this exact format:
 }
 
 /* -------------------- API ROUTE -------------------- */
-
 export async function POST(req: Request) {
+  let title = "";
+  let description = "";
+
   try {
-    const { title, description } = await req.json();
+    const body = await req.json();
+    title = body?.title || "";
+    description = body?.description || "";
 
     if (!title || !description) {
       return NextResponse.json(null, { status: 200 });
     }
 
-    const key = `${title}::${(description || "").slice(0, 120)}`;
+    const cacheKey = `${title}::${description.slice(0, 120)}`;
     const now = Date.now();
 
     /* -------- CACHE HIT -------- */
-    const cached = cache.get(key);
+    const cached = cache.get(cacheKey);
     if (cached && cached.expires > now) {
       return NextResponse.json(cached.data);
     }
 
-    /* -------- GENERATE AI SUMMARY -------- */
+    /* -------- AI GENERATION -------- */
     const summary = await generateSummary(title, description);
 
-    /* -------- SAVE TO CACHE -------- */
-    cache.set(key, {
+    cache.set(cacheKey, {
       data: summary,
       expires: now + CACHE_TTL,
     });
@@ -89,10 +88,10 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Summarize error:", error);
 
-    // Fail gracefully (never break UI)
+    /* -------- SAFE FALLBACK -------- */
     return NextResponse.json(
       {
-        bullets: [description?.slice(0, 90) + "…"],
+        bullets: [(description || "").slice(0, 90) + "…"],
         why: "This story may impact people’s daily life or decisions.",
       },
       { status: 200 }
