@@ -2,17 +2,11 @@ import { NextResponse } from "next/server";
 
 /* -------------------- IN-MEMORY CACHE -------------------- */
 /**
- * Key: topic:page
- * Value: articles + expiry
+ * Cache key: topic:page
+ * TTL: 5 minutes
  */
-const cache = new Map<
-  string,
-  { data: any[]; expires: number }
->();
-
+const cache = new Map<string, { data: any[]; expires: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-/* -------------------- API ROUTE -------------------- */
 
 export async function GET(req: Request) {
   try {
@@ -37,23 +31,26 @@ export async function GET(req: Request) {
       "health",
     ];
 
-    /* -------------------- TOPIC PRIORITY -------------------- */
-    /**
-     * 1. User interests (highest priority)
-     * 2. Selected category
-     * 3. Fallback: general
-     */
-    const topic =
-      interests.length > 0 && validTopics.includes(interests[0])
-        ? interests[0]
-        : validTopics.includes(category)
-        ? category
-        : "general";
+    /* -------------------- FINAL TOPIC LOGIC -------------------- */
+    let topic: string;
 
+    if (category !== "general" && validTopics.includes(category)) {
+      // Explicit category always wins
+      topic = category;
+    } else if (interests.length > 0) {
+      // Rotate interests by page number
+      const index = (parseInt(page, 10) - 1) % interests.length;
+      topic = validTopics.includes(interests[index])
+        ? interests[index]
+        : "general";
+    } else {
+      topic = "general";
+    }
+
+    /* -------------------- CACHE CHECK -------------------- */
     const cacheKey = `${topic}:${page}`;
     const now = Date.now();
 
-    /* -------------------- CACHE HIT -------------------- */
     const cached = cache.get(cacheKey);
     if (cached && cached.expires > now) {
       return NextResponse.json(cached.data);
@@ -63,7 +60,7 @@ export async function GET(req: Request) {
     const apiKey = process.env.GNEWS_API_KEY;
 
     if (!apiKey) {
-      console.error("❌ GNEWS_API_KEY missing");
+      console.error("GNEWS_API_KEY missing");
       return NextResponse.json([], { status: 200 });
     }
 
@@ -73,13 +70,13 @@ export async function GET(req: Request) {
     );
 
     if (!res.ok) {
-      console.error("❌ GNews response not OK");
+      console.error("GNews API error");
       return NextResponse.json([], { status: 200 });
     }
 
     const data = await res.json();
 
-    /* -------------------- NORMALIZE DATA -------------------- */
+    /* -------------------- NORMALIZE RESPONSE -------------------- */
     const articles =
       data?.articles?.map((a: any) => ({
         title: a.title,
@@ -100,7 +97,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json(articles);
   } catch (error) {
-    console.error("❌ News API error:", error);
+    console.error("News API failure:", error);
     return NextResponse.json([], { status: 200 });
   }
 }
